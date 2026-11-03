@@ -212,7 +212,7 @@
     <div class="card" id="baseCard">
       <h2><span class="step">1</span>上传底图（单张）</h2>
       <input type="file" id="baseInput" accept="image/*" />
-      <p class="hint" id="baseHint">支持 PNG / JPG / WebP 等常见格式。仅允许选择 1 张；也可直接把图片拖拽到右侧画布区域。</p>
+      <p class="hint" id="baseHint">支持 PNG / JPG / WebP 等常见格式。仅允许选择 1 张；也可直接把图片拖拽到右侧画布区域。<b>建议：单张底图 ≤ 20MB、≤ 2000 万像素（约 5000×4000）</b>——底图越大，每张导出图越大，批量导出越慢、越占磁盘。</p>
       <div id="baseInfo" class="hint"></div>
     </div>
 
@@ -498,6 +498,11 @@ const MAX_BASE_SIZE = 50 * 1024 * 1024;
 const MAX_QR_SIZE   = 30 * 1024 * 1024;
 const MAX_PIXELS    = 30000000; // 3000 万像素上限
 const MAX_QR_COUNT  = 1000;     // 动态二维码数量上限（V3.0 起 200→1000；导出画布复用 + Blob 磁盘后备使其可控）
+/* 软性建议阈值（超过仍可用，但给出性能提示；硬上限见上方 MAX_*） */
+const BASE_SOFT_SIZE   = 20 * 1024 * 1024;  // 底图建议 ≤20MB
+const BASE_SOFT_PIXELS = 20000000;          // 底图建议 ≤2000 万像素
+const QR_MEM_WARN   = 600  * 1024 * 1024;   // 二维码解码位图累计 >600MB → 黄色提示
+const QR_MEM_DANGER = 1200 * 1024 * 1024;   // 累计 >1.2GB → 红色强警告（低配电脑导出可能失败）
 
 const state = {
   baseImg: null,
@@ -652,7 +657,17 @@ function setBaseFile(file){
     state.baseFile = file;
     canvas.width  = img.naturalWidth;
     canvas.height = img.naturalHeight;
-    baseInfo.textContent = `已加载：${file.name} ｜ ${img.naturalWidth}×${img.naturalHeight} ｜ ${t}`;
+    const mp = (img.naturalWidth * img.naturalHeight / 1000000).toFixed(1);
+    let baseWarn = '';
+    if(img.naturalWidth * img.naturalHeight > BASE_SOFT_PIXELS){
+      baseWarn = ` ｜ ⚠️ 分辨率超建议值（>${BASE_SOFT_PIXELS/1000000}MP）`;
+      toast(`底图分辨率较高（约 ${mp} 百万像素）：单张导出体积会较大，批量导出时请确保磁盘空间充足。`, 'warn');
+    }
+    if(file.size > BASE_SOFT_SIZE){
+      baseWarn += ` ｜ ⚠️ 文件超过建议大小（>${BASE_SOFT_SIZE/1024/1024}MB）`;
+      toast(`底图文件较大（${(file.size/1024/1024).toFixed(1)}MB）：建议压缩后再使用，否则批量导出明显变慢。`, 'warn');
+    }
+    baseInfo.textContent = `已加载：${file.name} ｜ ${img.naturalWidth}×${img.naturalHeight} ｜ ${t}${baseWarn}`;
     centerQR();
     fitToScreen();
     renderPreview();
@@ -739,8 +754,21 @@ async function addQrFiles(files, sourceFolder = null, relPaths = null){
     updateStageInfo();
     updateZipHint();
     updateFlowSteps();
+    checkQrMemoryBudget();
   }finally{
     setEditLocked(false);
+  }
+}
+
+/* 内存预估护栏：二维码解码位图 ≈ 宽×高×4 字节。分档提示，不阻止导入（用户自负其责的软护栏） */
+function checkQrMemoryBudget(){
+  const total = state.qrFiles.reduce((s,q)=> s + q.img.naturalWidth * q.img.naturalHeight * 4, 0);
+  const gb = (total / (1024*1024*1024)).toFixed(2);
+  const mb = Math.round(total / (1024*1024));
+  if(total > QR_MEM_DANGER){
+    toast(`⚠️ 当前 ${state.qrFiles.length} 张二维码预计占用内存约 ${gb}GB，已超出低配电脑安全范围，导出可能失败或中途崩溃。建议「清空二维码」后分批导入（每批 ≤300 张）。`, 'error');
+  }else if(total > QR_MEM_WARN){
+    toast(`提示：当前二维码预计占用内存约 ${mb}MB。内存较小的电脑（可用 <4GB）建议分批导入。`, 'warn');
   }
 }
 
