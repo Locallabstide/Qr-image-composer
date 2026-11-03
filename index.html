@@ -497,7 +497,7 @@
 const MAX_BASE_SIZE = 50 * 1024 * 1024;
 const MAX_QR_SIZE   = 30 * 1024 * 1024;
 const MAX_PIXELS    = 30000000; // 3000 万像素上限
-const MAX_QR_COUNT  = 200;      // 动态二维码数量上限，防止列表/下拉/导出性能失控
+const MAX_QR_COUNT  = 1000;     // 动态二维码数量上限（V3.0 起 200→1000；导出画布复用 + Blob 磁盘后备使其可控）
 
 const state = {
   baseImg: null,
@@ -703,6 +703,10 @@ async function addQrFiles(files, sourceFolder = null, relPaths = null){
   if(valid.length > room){
     toast(`动态二维码最多 ${MAX_QR_COUNT} 张，本次仅导入前 ${room} 张。`, 'warn');
     valid.length = room;
+  }
+  // 大数量提示：导入解码与导出耗时、内存占用随数量线性增长
+  if(valid.length >= 500){
+    toast(`本次导入 ${valid.length} 张：数量较大，导入需 ${Math.round(valid.length * 0.05)}~${Math.round(valid.length * 0.1)} 秒，导出请确保磁盘剩余空间充足；低配电脑建议分批处理。`, 'info');
   }
 
   setEditLocked(true);
@@ -1933,15 +1937,18 @@ exportBtn.addEventListener('click', async ()=>{
     const quality = state.baseMime === 'image/jpeg' ? 0.99 : (state.baseMime === 'image/webp' ? 0.99 : undefined);
     const seen = new Set();
 
+    // 复用同一块导出画布：避免为每张二维码重复创建/销毁底图大小的位图（大数量时的主要内存与 GPU 压力）
+    const cv = document.createElement('canvas');
+    cv.width  = state.baseImg.naturalWidth;
+    cv.height = state.baseImg.naturalHeight;
+    const c = cv.getContext('2d');
+
     for(let i=0;i<total;i++){
       const entry = state.qrFiles[i];
       exportText.textContent = `合成中 ${i+1} / ${total}：${entry.name}`;
       exportBar.style.width = Math.round((i/total)*100) + '%';
 
-      const cv = document.createElement('canvas');
-      cv.width  = state.baseImg.naturalWidth;
-      cv.height = state.baseImg.naturalHeight;
-      const c = cv.getContext('2d');
+      // 底图整幅覆盖上一张内容，等价于清空重画（drawQR/drawFixedQR 内部 save/restore 保证状态干净）
       c.drawImage(state.baseImg, 0, 0);
       state.fixedQRs.forEach(fq => drawFixedQR(c, fq));
       drawQR(c, entry.img, state.settings);
@@ -1961,6 +1968,9 @@ exportBtn.addEventListener('click', async ()=>{
       files.push({ name: uniqueName(zipPath, seen), blob });
       if(i % 5 === 0) await sleep(0);
     }
+
+    // 画布用完立即释放位图内存（大数量场景重要）
+    cv.width = 0; cv.height = 0;
 
     exportBar.style.width = '95%';
     exportText.textContent = '正在打包 ZIP…';
