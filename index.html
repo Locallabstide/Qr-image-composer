@@ -688,7 +688,7 @@ function centerQR(){
   state.settings.crop = { l:0, t:0, r:0, b:0 };
 }
 
-async function addQrFiles(files, sourceFolder = null){
+async function addQrFiles(files, sourceFolder = null, relPaths = null){
   const valid = [];
   for(const f of files){
     const v = validateImageFile(f, MAX_QR_SIZE);
@@ -712,13 +712,14 @@ async function addQrFiles(files, sourceFolder = null){
     let done = 0;
     const total = valid.length;
 
-    for(const f of valid){
+    for(let i=0;i<valid.length;i++){
+      const f = valid[i];
       qrLoadText.textContent = `正在加载二维码 ${done+1} / ${total}`;
       qrLoadBar.style.width = Math.round((done/total)*100) + '%';
       try{
         const { img, url } = await loadImage(f);
         if(img.naturalWidth * img.naturalHeight > MAX_PIXELS){ URL.revokeObjectURL(url); toast('图片像素过大，已跳过：' + f.name, 'warn'); continue; }
-        state.qrFiles.push({ name:f.name, file:f, img, objectURL:url, sourceFolder: sourceFolder || null });
+        state.qrFiles.push({ name:f.name, file:f, img, objectURL:url, sourceFolder: sourceFolder || null, relPath: (relPaths && relPaths[i]) || null });
         appendQrRow(f.name, img);
         done++;
       }catch(err){ toast('解码失败，已跳过：' + f.name, 'warn'); }
@@ -781,20 +782,22 @@ folderInput.addEventListener('change', (e)=>{
   if(all.length === 0) return;
 
   // 深度过滤：webkitRelativePath 段数 ≤ 3（主文件夹/文件 或 主文件夹/子文件夹/文件）
-  const kept = [];
+  const kept = [];       // [{ file, rel }]，rel = 主文件夹内相对路径，导出 ZIP 时还原结构
   let skippedDeep = 0;
   for(const f of all){
     const rel = f.webkitRelativePath || f.name;
     if(rel.split('/').length > 3){ skippedDeep++; continue; }
-    if(isImageFile(f)) kept.push(f);
+    if(isImageFile(f)){
+      kept.push({ file: f, rel: rel.split('/').slice(1).join('/') || f.name });
+    }
   }
   const folderName = (all[0].webkitRelativePath || '').split('/')[0] || null;
   if(skippedDeep > 0) toast(`已跳过 ${skippedDeep} 张位于更深层子文件夹的图片（仅支持主文件夹 + 1 层子文件夹）。`, 'warn');
   if(kept.length === 0){ toast('所选文件夹中没有图片文件。', 'warn'); return; }
 
-  // 按相对路径 + 文件名自然排序，保证导出顺序与文件名顺序一致
-  kept.sort((a,b)=> naturalCompare(a.webkitRelativePath || '', b.webkitRelativePath || ''));
-  addQrFiles(kept, folderName);
+  // 按相对路径 + 文件名自然排序，保证导出顺序与文件名顺序一致（file 与 rel 同步排序）
+  kept.sort((a,b)=> naturalCompare(a.rel, b.rel));
+  addQrFiles(kept.map(x=>x.file), folderName, kept.map(x=>x.rel));
 });
 
 qrSelect.addEventListener('change', (e)=>{
@@ -1704,8 +1707,9 @@ function entryToFile(entry){
 }
 
 /* 递归收集文件夹内图片：depth 0 = 主文件夹内文件；depth 1 = 1 层子文件夹内文件；更深忽略。
+   rel 记录「主文件夹内的相对路径」（如 sub/file.jpg），供导出 ZIP 时还原目录结构。
    注意：readEntries() 每次最多返回 100 条，必须循环调用直到返回空，否则会静默丢文件。 */
-async function collectDirFiles(dirEntry, depth, out){
+async function collectDirFiles(dirEntry, depth, out, rootName){
   if(depth > 1) return;
   const reader = dirEntry.createReader();
   for(;;){
@@ -1715,9 +1719,12 @@ async function collectDirFiles(dirEntry, depth, out){
       try{
         if(ent.isFile){
           const file = await entryToFile(ent);
-          if(file && isImageFile(file)) out.push({ file, rel: ent.fullPath });
+          const rel = (rootName && ent.fullPath.startsWith('/' + rootName + '/'))
+            ? ent.fullPath.substring(rootName.length + 2)
+            : ent.fullPath.replace(/^\//, '');
+          if(file && isImageFile(file)) out.push({ file, rel });
         }else if(ent.isDirectory && depth === 0){
-          await collectDirFiles(ent, depth + 1, out);
+          await collectDirFiles(ent, depth + 1, out, rootName);
         }
       }catch(err){ /* 单个条目读取失败时跳过 */ }
     }
@@ -1754,7 +1761,7 @@ window.addEventListener('drop', async (e)=>{
     return;
   }
 
-  const folderImgs = [];  // 文件夹内的图片
+  const folderImgs = [];  // 文件夹内的图片（含主文件夹内相对路径 rel）
   const looseImgs = [];   // 散拖的图片文件
   let folderName = null, folderCount = 0;
 
@@ -1763,7 +1770,7 @@ window.addEventListener('drop', async (e)=>{
     if(entry.isDirectory){
       folderCount++;
       if(!folderName) folderName = entry.name;
-      await collectDirFiles(entry, 0, folderImgs);
+      await collectDirFiles(entry, 0, folderImgs, entry.name);
     }else if(entry.isFile){
       const file = await entryToFile(entry);
       if(file && isImageFile(file)) looseImgs.push(file);
@@ -1773,7 +1780,7 @@ window.addEventListener('drop', async (e)=>{
   if(looseImgs.length) setBaseFile(looseImgs[0]);
   if(folderImgs.length){
     folderImgs.sort((a,b)=> naturalCompare(a.rel, b.rel));
-    addQrFiles(folderImgs.map(x=>x.file), folderName);
+    addQrFiles(folderImgs.map(x=>x.file), folderName, folderImgs.map(x=>x.rel));
     if(looseImgs.length) toast(`已同时处理：第一张图片设为底图，文件夹内 ${folderImgs.length} 张图片导入二维码。`, 'info');
   }else if(folderCount > 0 && !looseImgs.length){
     toast('拖入的文件夹中没有图片文件。', 'warn');
@@ -1942,8 +1949,16 @@ exportBtn.addEventListener('click', async ()=>{
       const blob = await canvasToBlob(cv, state.baseMime, quality);
       if(!blob) throw new Error('canvas 导出失败：' + entry.name);
       // 文件名后缀统一对齐实际编码格式（底图格式），避免 .jpg 实为 PNG 之类错配
-      const outName = entry.name.replace(/\.(jpe?g|png|webp|bmp|gif)$/i, '.' + extForMime(state.baseMime));
-      files.push({ name: uniqueName(outName, seen), blob });
+      let zipPath = entry.name.replace(/\.(jpe?g|png|webp|bmp|gif)$/i, '.' + extForMime(state.baseMime));
+      // 来源为文件夹时，按主文件夹内相对路径写入 ZIP，还原原有目录结构；
+      // 导入了多个文件夹时加来源文件夹名前缀，避免不同文件夹的同名子目录互相覆盖
+      if(entry.relPath){
+        const folders = new Set();
+        state.qrFiles.forEach(q=>{ if(q.sourceFolder) folders.add(q.sourceFolder); });
+        const prefix = (folders.size > 1 && entry.sourceFolder) ? entry.sourceFolder + '/' : '';
+        zipPath = (prefix + entry.relPath).replace(/\.(jpe?g|png|webp|bmp|gif)$/i, '.' + extForMime(state.baseMime));
+      }
+      files.push({ name: uniqueName(zipPath, seen), blob });
       if(i % 5 === 0) await sleep(0);
     }
 
