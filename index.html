@@ -287,6 +287,13 @@
           </div>
         </div>
         <p class="hint">从二维码四边向内裁剪（像素，按原始尺寸计）；也可直接在画布上拖动虚线框的四边进行裁剪。</p>
+        <div class="mini-field" style="margin-bottom:8px;">
+          <span>中心等量裁剪（四边同时向内，以码中心为准）</span>
+          <div class="mini-row">
+            <input type="number" id="cropAll" value="0" min="0" step="1" />
+            <div class="step-btns"><button type="button" data-cropall="-">−</button><button type="button" data-cropall="+">＋</button></div>
+          </div>
+        </div>
         <div class="crop-grid">
           <div class="mini-field">
             <span>左（裁剪）</span>
@@ -458,7 +465,7 @@
   </main>
 </div>
 
-<div class="site-footer">本工具为纯前端本地应用，所有图片均在浏览器内处理，不会上传服务器 | Powered by Yulai © 2026. Version 2.1</div>
+<div class="site-footer">本工具为纯前端本地应用，所有图片均在浏览器内处理，不会上传服务器 | Powered by Yulai © 2026. Version 3.0</div>
 
 <div id="dragOverlay">
   <div class="drag-box">
@@ -534,6 +541,7 @@ const yInput      = $('yInput');
 const scaleInput  = $('scaleInput');
 const rotInput    = $('rotInput');
 const cropLInput  = $('cropL');
+const cropAllInput = $('cropAll');
 const cropTInput  = $('cropT');
 const cropRInput  = $('cropR');
 const cropBInput  = $('cropB');
@@ -1481,7 +1489,33 @@ function syncCropInputs(){
   cropTInput.value = state.settings.crop.t;
   cropRInput.value = state.settings.crop.r;
   cropBInput.value = state.settings.crop.b;
+  // 中心等量裁剪输入框：四边相等时回显该值，否则留空
+  const c = state.settings.crop;
+  cropAllInput.value = (c.l === c.t && c.t === c.r && c.r === c.b) ? c.l : '';
 }
+
+/* 中心等量裁剪：四边同时向内 v 像素（以码中心为准）
+   上限 = floor((min(宽, 高) − 2) / 2)，保证剩余宽高均 ≥ 2px */
+function maxUniformCrop(){
+  const qr = currentQR();
+  if(!qr) return 0;
+  return Math.max(0, Math.floor((Math.min(qr.img.naturalWidth, qr.img.naturalHeight) - 2) / 2));
+}
+function applyUniformCrop(raw){
+  const qr = currentQR();
+  if(!qr) return;
+  const v = clamp(parseInt(raw, 10) || 0, 0, maxUniformCrop());
+  state.settings.crop = { l:v, t:v, r:v, b:v };
+  syncCropInputs();
+  renderPreview();
+  updateStageInfo();
+}
+cropAllInput.addEventListener('input', ()=> applyUniformCrop(cropAllInput.value));
+document.querySelectorAll('button[data-cropall]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    applyUniformCrop((parseInt(cropAllInput.value, 10) || 0) + (btn.dataset.cropall === '+' ? 1 : -1));
+  });
+});
 
 function applyInputsToSettings(){
   state.settings.x = parseInt(xInput.value, 10) || 0;
@@ -1925,7 +1959,7 @@ exportBtn.addEventListener('click', async ()=>{
 
     exportBar.style.width = '100%';
     exportText.textContent = `完成！共导出 ${total} 张图片。`;
-    toast(`导出完成，共 ${total} 张。`, 'ok');
+    toast(`导出完成：${zipBase}-${stamp}.zip（共 ${total} 张）。若浏览器未弹出下载，请改用 Chrome / Edge 打开本工具。`, 'ok');
     exportedOnce = true;
     updateFlowSteps();
   }catch(err){

@@ -1,7 +1,7 @@
 # 图片二维码合成工具 · Image QR Code Composer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0-blue.svg)](https://github.com/Locallabstide/Qr-image-composer/releases/tag/v2.0)
+[![Version](https://img.shields.io/badge/version-3.0-blue.svg)](https://github.com/Locallabstide/Qr-image-composer/releases)
 [![Online Demo](https://img.shields.io/badge/demo-online-brightgreen.svg)](https://Locallabstide.github.io/Qr-image-composer/)
 
 > 纯前端、零依赖、可离线的图片二维码合成工具。把二维码图片批量合成到海报 / 底图上，支持拖拽、缩放、旋转、四边裁剪，一键导出 ZIP。
@@ -39,6 +39,7 @@
 
 - **[用户操作手册](图片二维码合成工具-用户操作手册.md)** — 面向普通使用者，5 步上手，含导出规则、常见问题与快捷键速查。
 - **[开发者手册](图片二维码合成工具-开发者手册.md)** — 面向开发者 / 贡献者，含状态模型、坐标系几何推导、ZIP 编码实现与关键函数索引。
+- **[操作流程图](图片二维码合成工具-操作流程图.md)** — Mermaid 流程图：总体操作路径、图层关系、文件夹导入规则与常见问题速查。
 
 ## 🛠 技术说明 / Tech
 
