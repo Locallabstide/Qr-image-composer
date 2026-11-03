@@ -6,28 +6,45 @@
 <title>图片二维码合成工具</title>
 <style>
   :root{
-    --primary:#2f6fed;
-    --primary-dark:#1a5bd7;
-    --danger:#ff4d4f;
-    --bg:#f5f7fa;
+    --primary:#4c6ef5;
+    --primary-dark:#3b5bdb;
+    --primary-soft:#edf1ff;
+    --danger:#fa5252;
+    --ok:#37b24d;
+    --bg:#eef1f6;
     --panel-bg:#fff;
-    --panel-border:#e1e5eb;
-    --text:#1f2937;
-    --text-sub:#6b7280;
-    --input-bg:#f9fafb;
+    --panel-border:#e3e8f0;
+    --text:#1d2433;
+    --text-sub:#697386;
+    --input-bg:#f7f9fc;
+    --shadow-sm:0 1px 3px rgba(29,36,51,.06);
+    --shadow-md:0 6px 18px rgba(29,36,51,.08);
   }
   *{ box-sizing:border-box; }
   body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); }
-  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:var(--panel-bg); border-bottom:1px solid var(--panel-border); }
-  .topbar h1{ margin:0; font-size:18px; }
-  .topbar .badge{ font-size:11px; color:var(--primary); background:#eef4ff; padding:3px 8px; border-radius:20px; border:1px solid #d7e3ff; }
+
+  /* 顶栏：品牌 + 流程步骤条 */
+  .topbar{ display:flex; align-items:center; gap:16px; padding:10px 20px; background:var(--panel-bg); border-bottom:1px solid var(--panel-border); box-shadow:var(--shadow-sm); }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .logo{ width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#4c6ef5,#22b8cf); display:flex; align-items:center; justify-content:center; font-size:17px; color:#fff; flex-shrink:0; }
+  .brand h1{ margin:0; font-size:17px; letter-spacing:.5px; white-space:nowrap; }
+  .brand .badge{ font-size:11px; color:var(--primary); background:var(--primary-soft); padding:2px 8px; border-radius:20px; border:1px solid #d9e0ff; white-space:nowrap; }
+  .flow-steps{ display:flex; align-items:center; margin:0 0 0 auto; padding:0; list-style:none; }
+  .flow-steps li{ display:flex; align-items:center; gap:6px; font-size:12px; color:#98a2b3; white-space:nowrap; }
+  .flow-steps li i{ font-style:normal; width:20px; height:20px; border-radius:50%; background:#e6eaf2; color:#8a94a8; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+  .flow-steps li.active{ color:var(--primary); font-weight:600; }
+  .flow-steps li.active i{ background:var(--primary); color:#fff; box-shadow:0 0 0 4px var(--primary-soft); }
+  .flow-steps li.done{ color:var(--ok); }
+  .flow-steps li.done i{ background:var(--ok); color:#fff; }
+  .flow-steps li + li::before{ content:''; width:16px; height:2px; background:#e6eaf2; margin:0 8px; border-radius:1px; }
+
   .layout{ display:flex; height:calc(100vh - 57px); }
-  .sidebar{ width:400px; min-width:400px; background:var(--panel-bg); border-right:1px solid var(--panel-border); overflow-y:auto; padding:12px; }
-  .stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; position:relative; background:#e8ecf1; overflow:hidden; }
-  .card{ background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:10px; padding:12px; margin-bottom:10px; }
-  .card h2{ margin:0 0 10px; font-size:14px; display:flex; align-items:center; gap:6px; }
-  .step{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; font-size:11px; font-weight:700; }
-  .substep{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; border-radius:50%; background:#e5e7eb; color:#374151; font-size:10px; font-weight:700; padding:0 5px; }
+  .sidebar{ width:400px; min-width:400px; background:var(--panel-bg); border-right:1px solid var(--panel-border); overflow-y:auto; padding:14px 12px; }
+  .stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; position:relative; background:radial-gradient(circle at 50% 30%, #f4f7fb, #e6ebf2); overflow:hidden; }
+  .card{ background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:var(--shadow-sm); }
+  .card h2{ margin:0 0 12px; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .step{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:7px; background:linear-gradient(135deg,var(--primary),#22b8cf); color:#fff; font-size:11px; font-weight:700; flex-shrink:0; }
+  .substep{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; border-radius:50%; background:var(--primary-soft); color:var(--primary); font-size:10px; font-weight:700; padding:0 5px; flex-shrink:0; }
   .field{ display:block; margin-bottom:8px; }
   .field>span{ display:block; font-size:11.5px; color:var(--text-sub); margin-bottom:3px; }
   .mini-row{ display:flex; gap:6px; align-items:center; }
@@ -37,12 +54,15 @@
   .step-btns{ display:flex; gap:3px; }
   .step-btns button{ width:24px; height:28px; border:1px solid var(--panel-border); border-radius:5px; background:#fff; cursor:pointer; font-size:13px; line-height:1; }
   .step-btns button:hover{ background:var(--primary); color:#fff; border-color:var(--primary); }
-  .btn{ padding:5px 10px; border:1px solid var(--panel-border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px; transition:all .15s; }
+  .btn{ padding:7px 12px; border:1px solid var(--panel-border); border-radius:8px; background:#fff; cursor:pointer; font-size:12.5px; transition:all .15s; color:var(--text); }
   .btn:hover{ border-color:var(--primary); color:var(--primary); }
+  .btn.primary{ background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border-color:transparent; color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(76,110,245,.35); }
+  .btn.primary:hover{ filter:brightness(1.08); color:#fff; }
+  .btn.lg{ padding:10px 16px; font-size:13.5px; border-radius:10px; }
   .btn.block{ display:block; width:100%; }
   .btn.ghost{ background:transparent; }
-  .btn.danger{ color:var(--danger); border-color:#ffccc7; }
-  .btn.danger:hover{ background:#fff1f0; }
+  .btn.danger{ color:var(--danger); border-color:#ffc9c9; }
+  .btn.danger:hover{ background:#fff5f5; }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
   .btn-row{ display:flex; gap:6px; flex-wrap:wrap; }
   .hint{ font-size:11px; color:var(--text-sub); margin:4px 0 0; line-height:1.4; }
@@ -103,8 +123,21 @@
   .canvas-wrap{ position:relative; border:1px solid var(--panel-border); border-radius:10px; overflow:auto; max-width:100%; max-height:calc(100% - 72px); background:#fff; box-shadow:0 4px 20px rgba(0,0,0,.06); }
   .canvas-wrap canvas{ display:block; cursor:grab; }
   .canvas-wrap canvas.dragging{ cursor:grabbing; }
-  .drop-tip{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(47,111,237,.12); color:var(--primary); font-size:16px; font-weight:600; border:3px dashed var(--primary); border-radius:10px; pointer-events:none; }
-  .canvas-wrap.drag-over .drop-tip{ display:flex; }
+  /* 空状态引导（未加载底图时覆盖画布） */
+  .empty-state{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:linear-gradient(180deg,#fbfcff,#f2f5fb); text-align:center; padding:20px; z-index:5; }
+  .empty-state .empty-icon{ font-size:44px; line-height:1; }
+  .empty-state .empty-title{ font-size:18px; font-weight:700; color:var(--text); }
+  .empty-state .empty-desc{ font-size:12.5px; color:var(--text-sub); }
+  .empty-state .btn{ margin-top:10px; }
+  .empty-state .empty-tip{ font-size:11px; color:#98a2b3; margin-top:4px; }
+
+  /* 全窗口拖放覆盖层：文件夹→导入二维码 / 图片→设为底图 */
+  #dragOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(76,110,245,.14); backdrop-filter:blur(2px); z-index:1500; pointer-events:none; }
+  #dragOverlay.show{ display:flex; }
+  #dragOverlay .drag-box{ border:3px dashed var(--primary); background:rgba(255,255,255,.96); border-radius:16px; padding:26px 46px; text-align:center; box-shadow:var(--shadow-md); }
+  #dragOverlay .drag-icon{ font-size:38px; line-height:1; }
+  #dragOverlay .drag-text{ font-size:17px; font-weight:700; color:var(--primary); margin-top:8px; }
+  #dragOverlay .drag-sub{ font-size:12px; color:var(--text-sub); margin-top:4px; }
   .stage-info{ margin-top:8px; color:var(--text-sub); font-size:11.5px; text-align:center; max-width:90%; }
 
   /* 操作说明 */
@@ -144,8 +177,17 @@
 <body>
 
 <div class="topbar">
-  <h1>图片二维码合成工具</h1>
-  <span class="badge">纯前端 · 本地运行 · 文件不上传</span>
+  <div class="brand">
+    <div class="logo">▦</div>
+    <h1>图片二维码合成工具</h1>
+    <span class="badge">纯前端 · 本地运行 · 文件不上传</span>
+  </div>
+  <ol class="flow-steps" id="flowSteps">
+    <li class="active"><i>1</i><span>传底图</span></li>
+    <li><i>2</i><span>导二维码</span></li>
+    <li><i>3</i><span>调位置</span></li>
+    <li><i>4</i><span>导出</span></li>
+  </ol>
 </div>
 
 <div class="layout">
@@ -157,11 +199,11 @@
       <details class="help">
         <summary>点击展开 / 收起流程</summary>
         <ol>
-          <li>上传<b>底图</b>（仅支持单张）；也可直接把图片<b>拖拽</b>到右侧画布区域。</li>
-          <li>在「批量二维码导入」中<b>批量添加二维码</b>，导入后自动出现「定位 / 缩放 / 旋转」与「二维码剪裁」。</li>
+          <li>上传<b>底图</b>（仅支持单张）；也可直接把图片拖拽到页面任意位置。</li>
+          <li>在「批量二维码导入」中<b>批量添加二维码</b>：可多选文件，也可<b>选择文件夹</b>或<b>直接把文件夹拖进页面</b>（自动包含 1 层子文件夹，按文件名顺序导入）。</li>
           <li>用<b>方向键</b>或输入框调整位置，可设置缩放 / 旋转；也可直接在画布上拖动二维码。</li>
           <li>（可选）展开「固定二维码（可选）」，添加在每张导出结果中固定显示的二维码。</li>
-          <li>点击<b>批量导出</b>生成 ZIP，每张导出图分辨率/格式与底图一致，文件名 = 动态二维码原始文件名。</li>
+          <li>点击<b>批量导出</b>生成 ZIP：二维码来自同一文件夹时，ZIP 以该文件夹命名；否则以「二维码合成结果」命名。</li>
         </ol>
       </details>
     </div>
@@ -186,9 +228,13 @@
             <button class="btn ghost sm" id="clearQrBtn">清空</button>
           </div>
         </div>
-        <button type="button" class="btn block" id="addDynamicBtn">批量添加二维码</button>
+        <div class="btn-row" style="flex-direction:column; align-items:stretch;">
+          <button type="button" class="btn primary block" id="addDynamicBtn">批量添加二维码（多选文件）</button>
+          <button type="button" class="btn block" id="addFolderBtn">📁 选择文件夹导入（含 1 层子文件夹）</button>
+        </div>
         <input type="file" id="qrInput" accept="image/*" multiple style="display:none;" />
-        <p class="hint">批量导入业务二维码，每张独立合成到底图并导出。</p>
+        <input type="file" id="folderInput" webkitdirectory multiple style="display:none;" />
+        <p class="hint">也可以直接把<b>整个文件夹</b>拖进本页面窗口导入；导入后按文件名顺序排列。</p>
         <div id="qrLoadProgress" style="display:none;">
           <div class="progress"><i id="qrLoadBar"></i></div>
           <div class="progress-text" id="qrLoadText">加载中…</div>
@@ -377,9 +423,10 @@
     <div class="card">
       <h2><span class="step">4</span>预览 / 导出</h2>
       <div class="btn-row" style="margin-bottom:8px; flex-direction:column;">
-        <button class="btn block" id="exportBtn">④ 一键批量导出（ZIP）</button>
+        <button class="btn primary lg block" id="exportBtn">④ 一键批量导出（ZIP）</button>
         <button class="btn ghost block" id="overviewBtn" style="margin-top:6px;">缩略图总览（导出前预览全部合成效果）</button>
       </div>
+      <p class="hint" id="zipNameHint">未检测到统一来源文件夹时，将导出为「二维码合成结果-日期时间.zip」</p>
       <div id="exportProgress" style="display:none;">
         <div class="progress"><i id="exportBar"></i></div>
         <div class="progress-text" id="exportText">导出中…</div>
@@ -399,13 +446,27 @@
     </div>
     <div class="canvas-wrap" id="canvasWrap">
       <canvas id="previewCanvas" width="800" height="600"></canvas>
-      <div class="drop-tip">松开以设为底图</div>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🖼️</div>
+        <div class="empty-title">从一张底图开始</div>
+        <div class="empty-desc">上传海报 / 菜单等底图，再把二维码批量合成上去</div>
+        <button class="btn primary lg" id="emptyUploadBtn">选择底图</button>
+        <div class="empty-tip">也可以直接把图片或二维码文件夹拖进本页面</div>
+      </div>
     </div>
     <div class="stage-info" id="stageInfo">请先上传底图与二维码，然后在画布上拖动二维码进行摆放。</div>
   </main>
 </div>
 
-<div class="site-footer">本工具为纯前端本地应用，所有图片均在浏览器内处理，不会上传服务器 | Powered by Yulai © 2026. Version 2.0</div>
+<div class="site-footer">本工具为纯前端本地应用，所有图片均在浏览器内处理，不会上传服务器 | Powered by Yulai © 2026. Version 2.1</div>
+
+<div id="dragOverlay">
+  <div class="drag-box">
+    <div class="drag-icon">📥</div>
+    <div class="drag-text">松开鼠标</div>
+    <div class="drag-sub">文件夹 → 批量导入二维码 ｜ 图片 → 设为底图</div>
+  </div>
+</div>
 
 <div id="loadingMask">
   <div class="spinner"></div>
@@ -510,6 +571,8 @@ const fixedCropTInput = $('fixedCropT');
 const fixedCropRInput = $('fixedCropR');
 const fixedCropBInput = $('fixedCropB');
 const fixedCropCard   = $('fixedCropCard');
+const addFolderBtn  = $('addFolderBtn');
+const folderInput   = $('folderInput');
 
 /* ===================== 工具函数 ===================== */
 function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
@@ -529,6 +592,15 @@ function validateImageFile(file, maxBytes){
   if(!file.type.startsWith('image/')) return { ok:false, msg:'格式不支持：' + file.name };
   if(file.size > maxBytes) return { ok:false, msg:`文件过大（>${maxBytes/1024/1024}MB）：` + file.name };
   return { ok:true };
+}
+
+/* 图片判定：MIME 或常见图片扩展名（文件夹/拖入场景部分文件 MIME 为空） */
+const QR_EXT_RE = /\.(jpe?g|png|webp|bmp|gif)$/i;
+function isImageFile(f){ return (f.type && f.type.startsWith('image/')) || QR_EXT_RE.test(f.name); }
+
+/* 自然排序：a1, a2, ..., a10（避免 a1, a10, a2 的字典序问题） */
+function naturalCompare(a, b){
+  return String(a).localeCompare(String(b), 'zh-Hans-CN', { numeric:true, sensitivity:'base' });
 }
 
 function loadImage(file){
@@ -577,6 +649,8 @@ function setBaseFile(file){
     fitToScreen();
     renderPreview();
     updateStageInfo();
+    updateEmptyState();
+    updateFlowSteps();
   };
   img.onerror = ()=>{ URL.revokeObjectURL(url); if(token === baseLoadToken) toast('底图解码失败：' + file.name, 'error'); };
   img.src = url;
@@ -588,6 +662,8 @@ baseInput.addEventListener('change', (e)=>{
   if(files.length > 1) toast('底图仅支持单张，已自动使用第一张。', 'warn');
   setBaseFile(files[0]);
 });
+
+$('emptyUploadBtn').addEventListener('click', ()=>{ if(!baseInput.disabled) baseInput.click(); });
 
 /* ===================== 动态二维码 ===================== */
 function centerQR(){
@@ -604,7 +680,7 @@ function centerQR(){
   state.settings.crop = { l:0, t:0, r:0, b:0 };
 }
 
-async function addQrFiles(files){
+async function addQrFiles(files, sourceFolder = null){
   const valid = [];
   for(const f of files){
     const v = validateImageFile(f, MAX_QR_SIZE);
@@ -634,7 +710,7 @@ async function addQrFiles(files){
       try{
         const { img, url } = await loadImage(f);
         if(img.naturalWidth * img.naturalHeight > MAX_PIXELS){ URL.revokeObjectURL(url); toast('图片像素过大，已跳过：' + f.name, 'warn'); continue; }
-        state.qrFiles.push({ name:f.name, file:f, img, objectURL:url });
+        state.qrFiles.push({ name:f.name, file:f, img, objectURL:url, sourceFolder: sourceFolder || null });
         appendQrRow(f.name, img);
         done++;
       }catch(err){ toast('解码失败，已跳过：' + f.name, 'warn'); }
@@ -648,6 +724,8 @@ async function addQrFiles(files){
     if(state.baseImg){ centerQR(); syncInputsFromSettings(); }
     renderPreview();
     updateStageInfo();
+    updateZipHint();
+    updateFlowSteps();
   }finally{
     setEditLocked(false);
   }
@@ -687,6 +765,30 @@ function updateQrSubcardsVisibility(){
 addDynamicBtn.addEventListener('click', ()=> qrInput.click());
 qrInput.addEventListener('change', (e)=>{ addQrFiles(Array.from(e.target.files||[])); e.target.value=''; });
 
+/* ===================== 文件夹导入（主文件夹 + 1 层子文件夹） ===================== */
+addFolderBtn.addEventListener('click', ()=> folderInput.click());
+folderInput.addEventListener('change', (e)=>{
+  const all = Array.from(e.target.files || []);
+  e.target.value = '';
+  if(all.length === 0) return;
+
+  // 深度过滤：webkitRelativePath 段数 ≤ 3（主文件夹/文件 或 主文件夹/子文件夹/文件）
+  const kept = [];
+  let skippedDeep = 0;
+  for(const f of all){
+    const rel = f.webkitRelativePath || f.name;
+    if(rel.split('/').length > 3){ skippedDeep++; continue; }
+    if(isImageFile(f)) kept.push(f);
+  }
+  const folderName = (all[0].webkitRelativePath || '').split('/')[0] || null;
+  if(skippedDeep > 0) toast(`已跳过 ${skippedDeep} 张位于更深层子文件夹的图片（仅支持主文件夹 + 1 层子文件夹）。`, 'warn');
+  if(kept.length === 0){ toast('所选文件夹中没有图片文件。', 'warn'); return; }
+
+  // 按相对路径 + 文件名自然排序，保证导出顺序与文件名顺序一致
+  kept.sort((a,b)=> naturalCompare(a.webkitRelativePath || '', b.webkitRelativePath || ''));
+  addQrFiles(kept, folderName);
+});
+
 qrSelect.addEventListener('change', (e)=>{
   state.currentIdx = parseInt(e.target.value, 10) || 0;
   syncInputsFromSettings();
@@ -705,6 +807,8 @@ $('clearQrBtn').addEventListener('click', ()=>{
   updateQrSubcardsVisibility();
   renderPreview();
   updateStageInfo();
+  updateZipHint();
+  updateFlowSteps();
   toast('已清空动态二维码。', 'info');
 });
 
@@ -1521,15 +1625,125 @@ canvasWrap.addEventListener('wheel', (e)=>{
   applyZoom();
 }, { passive:false });
 
-/* ===================== 拖拽上传 ===================== */
-canvasWrap.addEventListener('dragover', (e)=>{ e.preventDefault(); canvasWrap.classList.add('drag-over'); });
-canvasWrap.addEventListener('dragleave', ()=> canvasWrap.classList.remove('drag-over'));
-canvasWrap.addEventListener('drop', (e)=>{
+/* ===================== 流程步骤 / 空状态 / ZIP 命名 ===================== */
+let exportedOnce = false;
+
+function updateFlowSteps(){
+  const items = $('flowSteps').children;
+  const s1 = !!state.baseImg, s2 = state.qrFiles.length > 0;
+  const set = (el, cls)=>{ el.classList.remove('active','done'); if(cls) el.classList.add(cls); };
+  set(items[0], s1 ? 'done' : 'active');
+  set(items[1], s2 ? 'done' : (s1 ? 'active' : ''));
+  set(items[2], (s1 && s2) ? 'done' : '');
+  set(items[3], exportedOnce ? 'done' : ((s1 && s2) ? 'active' : ''));
+}
+
+function updateEmptyState(){
+  const empty = $('emptyState');
+  if(empty) empty.style.display = state.baseImg ? 'none' : 'flex';
+}
+
+function sanitizeFolderName(name){
+  return String(name).replace(/[\\/:*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+}
+
+/* 全部二维码来自同一文件夹时，用该文件夹名作为 ZIP 主名；否则返回 null 走默认名 */
+function exportZipBaseName(){
+  const folders = new Set();
+  state.qrFiles.forEach(q=>{ if(q.sourceFolder) folders.add(q.sourceFolder); });
+  if(folders.size === 1){ const c = sanitizeFolderName([...folders][0]); return c || null; }
+  return null;
+}
+
+function updateZipHint(){
+  const el = $('zipNameHint');
+  if(!el) return;
+  const base = exportZipBaseName();
+  el.textContent = base
+    ? `将导出为「${base}-日期时间.zip」（以二维码来源文件夹命名）`
+    : '未检测到统一来源文件夹时，将导出为「二维码合成结果-日期时间.zip」';
+}
+
+/* ===================== 全局拖拽导入（文件夹 / 图片） ===================== */
+function entryToFile(entry){
+  return new Promise(resolve =>{ try{ entry.file(resolve, ()=>resolve(null)); }catch(e){ resolve(null); } });
+}
+
+/* 递归收集文件夹内图片：depth 0 = 主文件夹内文件；depth 1 = 1 层子文件夹内文件；更深忽略。
+   注意：readEntries() 每次最多返回 100 条，必须循环调用直到返回空，否则会静默丢文件。 */
+async function collectDirFiles(dirEntry, depth, out){
+  if(depth > 1) return;
+  const reader = dirEntry.createReader();
+  for(;;){
+    const entries = await new Promise((res, rej)=> reader.readEntries(res, rej));
+    if(!entries || entries.length === 0) break;
+    for(const ent of entries){
+      try{
+        if(ent.isFile){
+          const file = await entryToFile(ent);
+          if(file && isImageFile(file)) out.push({ file, rel: ent.fullPath });
+        }else if(ent.isDirectory && depth === 0){
+          await collectDirFiles(ent, depth + 1, out);
+        }
+      }catch(err){ /* 单个条目读取失败时跳过 */ }
+    }
+  }
+}
+
+let dragDepth = 0;
+window.addEventListener('dragenter', (e)=>{
+  if(!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
   e.preventDefault();
-  canvasWrap.classList.remove('drag-over');
-  const files = Array.from(e.dataTransfer.files || []);
-  const img = files.find(f => f.type.startsWith('image/'));
-  if(img) setBaseFile(img);
+  dragDepth++;
+  $('dragOverlay').classList.add('show');
+});
+window.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+window.addEventListener('dragleave', ()=>{
+  dragDepth--;
+  if(dragDepth <= 0){ dragDepth = 0; $('dragOverlay').classList.remove('show'); }
+});
+window.addEventListener('drop', async (e)=>{
+  e.preventDefault();
+  dragDepth = 0;
+  $('dragOverlay').classList.remove('show');
+  const dt = e.dataTransfer;
+  if(!dt) return;
+
+  // 同步捕获条目（await 之后 DataTransfer.items 会失效）
+  const items = dt.items ? Array.from(dt.items) : [];
+  const entries = items.map(it => it.webkitGetAsEntry ? it.webkitGetAsEntry() : null);
+
+  // 浏览器不支持目录 API：退回旧行为，仅支持图片文件设为底图
+  if(!entries.some(Boolean)){
+    const files = Array.from(dt.files || []).filter(isImageFile);
+    if(files.length) setBaseFile(files[0]);
+    return;
+  }
+
+  const folderImgs = [];  // 文件夹内的图片
+  const looseImgs = [];   // 散拖的图片文件
+  let folderName = null, folderCount = 0;
+
+  for(const entry of entries){
+    if(!entry) continue;
+    if(entry.isDirectory){
+      folderCount++;
+      if(!folderName) folderName = entry.name;
+      await collectDirFiles(entry, 0, folderImgs);
+    }else if(entry.isFile){
+      const file = await entryToFile(entry);
+      if(file && isImageFile(file)) looseImgs.push(file);
+    }
+  }
+
+  if(looseImgs.length) setBaseFile(looseImgs[0]);
+  if(folderImgs.length){
+    folderImgs.sort((a,b)=> naturalCompare(a.rel, b.rel));
+    addQrFiles(folderImgs.map(x=>x.file), folderName);
+    if(looseImgs.length) toast(`已同时处理：第一张图片设为底图，文件夹内 ${folderImgs.length} 张图片导入二维码。`, 'info');
+  }else if(folderCount > 0 && !looseImgs.length){
+    toast('拖入的文件夹中没有图片文件。', 'warn');
+  }
 });
 
 /* ===================== 状态文案 ===================== */
@@ -1548,9 +1762,9 @@ let editLockCount = 0;
 function setEditLocked(locked){
   editLockCount = Math.max(0, editLockCount + (locked ? 1 : -1));
   const isLocked = editLockCount > 0;
-  const btns = [addDynamicBtn, addFixedBtn, $('clearQrBtn'), $('clearFixedBtn'), $('resetBtn'), $('resetCropBtn'), $('resetFixedCropBtn')];
+  const btns = [addDynamicBtn, addFolderBtn, addFixedBtn, $('clearQrBtn'), $('clearFixedBtn'), $('resetBtn'), $('resetCropBtn'), $('resetFixedCropBtn'), $('emptyUploadBtn')];
   btns.forEach(b=>{ if(b) b.disabled = isLocked; });
-  [baseInput, qrInput, fixedInput].forEach(i=>{ if(i) i.disabled = isLocked; });
+  [baseInput, qrInput, folderInput, fixedInput].forEach(i=>{ if(i) i.disabled = isLocked; });
   canvas.style.pointerEvents = isLocked ? 'none' : 'auto';
 }
 
@@ -1705,11 +1919,15 @@ exportBtn.addEventListener('click', async ()=>{
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    downloadBlob(zipBlob, `二维码合成结果-${stamp}.zip`);
+    // ZIP 主名：全部二维码来自同一文件夹时用该文件夹名，否则用默认名
+    const zipBase = exportZipBaseName() || '二维码合成结果';
+    downloadBlob(zipBlob, `${zipBase}-${stamp}.zip`);
 
     exportBar.style.width = '100%';
     exportText.textContent = `完成！共导出 ${total} 张图片。`;
     toast(`导出完成，共 ${total} 张。`, 'ok');
+    exportedOnce = true;
+    updateFlowSteps();
   }catch(err){
     console.error(err);
     toast('导出失败：' + (err.message||err), 'error');
@@ -1779,6 +1997,9 @@ function init(){
   applyZoom();
   renderPreview();
   updateStageInfo();
+  updateEmptyState();
+  updateZipHint();
+  updateFlowSteps();
 }
 init();
 </script>
